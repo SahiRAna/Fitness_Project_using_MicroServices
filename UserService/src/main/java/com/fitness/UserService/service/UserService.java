@@ -55,9 +55,9 @@ public class UserService {
                ()->new RuntimeException("User Not Found")
        );
         UserResponse userResponse = new UserResponse();
-//        userResponse.setUserId(user.getUserId());
+        userResponse.setUserId(user.getUserId());
         userResponse.setEmail(user.getEmail());
-//        userResponse.setPassword(user.getPassword());
+        userResponse.setPassword(user.getPassword());
         userResponse.setFirstName(user.getFirstName());
         userResponse.setLastName(user.getLastName());
         return userResponse;
