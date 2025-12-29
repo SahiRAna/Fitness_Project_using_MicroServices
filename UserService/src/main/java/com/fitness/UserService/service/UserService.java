@@ -5,71 +5,89 @@ import com.fitness.UserService.dto.UserResponse;
 import com.fitness.UserService.model.User;
 import com.fitness.UserService.repository.UserRepository;
 import jakarta.validation.Valid;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
-import java.sql.SQLException;
-import java.time.LocalDateTime;
-
+/**
+ * Service class for handling business logic related to users.
+ * This class is responsible for user registration, profile retrieval, and validation.
+ */
 @Service
 @Slf4j
-
+@RequiredArgsConstructor
 public class UserService {
-    @Autowired
+
     private final UserRepository repository;
 
-    public UserService(UserRepository repository) {
-        this.repository = repository;
-    }
-
+    /**
+     * Registers a new user.
+     *
+     * @param request The request object containing user registration details.
+     * @return A UserResponse object with details of the newly created user.
+     * @throws RuntimeException if a user with the given email already exists.
+     */
     public UserResponse register(@Valid RegisterRequest request) {
-//Adding data to the User
-        if(repository.existsByEmail(request.getEmail())){
-            throw new RuntimeException("mail already exists");
+        // Check if a user with the provided email already exists.
+        if (repository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Email already exists");
         }
 
+        // Create a new User entity from the registration request.
         User user = new User();
         user.setEmail(request.getEmail());
-        user.setPassword(request.getPassword());
+        user.setPassword(request.getPassword()); // Note: Passwords should be hashed in a real application.
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
 
+        // Save the new user to the repository.
+        User savedUser = repository.save(user);
 
-
-//        Saving data of the user in the User format so that it can be used by userResponse
-//        to set and use further
-        User savedUser =  repository.save(user);
-
-//        creating an object of the UserResponse so that it can be return the same type
-        UserResponse userResponse = new UserResponse();
-        userResponse.setUserId(savedUser.getUserId());
-        userResponse.setEmail(savedUser.getEmail());
-        userResponse.setPassword(savedUser.getPassword());
-        userResponse.setFirstName(savedUser.getFirstName());
-        userResponse.setLastName(savedUser.getLastName());
-        userResponse.setCreatedAt(savedUser.getCreatedAt());
-        userResponse.setUpdatedAt(savedUser.getUpdatedAt());
-
-        return userResponse;
+        // Map the saved user entity to a response object and return it.
+        return mapToUserResponse(savedUser);
     }
+
+    /**
+     * Retrieves a user's profile by their ID.
+     *
+     * @param userId The ID of the user to retrieve.
+     * @return A UserResponse object with the user's profile information.
+     * @throws RuntimeException if no user is found with the given ID.
+     */
     public UserResponse getUserProfile(String userId) {
-       User user =  repository.findById(userId).orElseThrow(
-               ()->new RuntimeException("User Not Found")
-       );
+        // Find the user by ID or throw an exception if not found.
+        User user = repository.findById(userId).orElseThrow(
+                () -> new RuntimeException("User Not Found")
+        );
+        // Map the user entity to a response object and return it.
+        return mapToUserResponse(user);
+    }
+
+    /**
+     * Checks if a user exists by their ID.
+     *
+     * @param userId The ID of the user to check.
+     * @return A boolean value indicating whether the user exists.
+     */
+    public Boolean existBYUserId(String userId) {
+        log.info("Calling User Validation API for user ID {}", userId);
+        return repository.existsById(userId);
+    }
+
+    /**
+     * Converts a User entity to a UserResponse DTO.
+     *
+     * @param user The User entity to be converted.
+     * @return A UserResponse DTO.
+     */
+    private UserResponse mapToUserResponse(User user) {
         UserResponse userResponse = new UserResponse();
         userResponse.setUserId(user.getUserId());
         userResponse.setEmail(user.getEmail());
-        userResponse.setPassword(user.getPassword());
         userResponse.setFirstName(user.getFirstName());
         userResponse.setLastName(user.getLastName());
+        userResponse.setCreatedAt(user.getCreatedAt());
+        userResponse.setUpdatedAt(user.getUpdatedAt());
         return userResponse;
-    }
-
-    public Boolean existBYUserId(String userId) {
-        log.info("Calling User Validation API",userId);
-        return repository.existsById(userId);
     }
 }
