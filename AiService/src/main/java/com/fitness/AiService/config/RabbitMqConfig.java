@@ -1,5 +1,6 @@
-package com.fitness.ActivityService.config;
+package com.fitness.AiService.config;
 
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
@@ -11,12 +12,19 @@ import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.listener.ConditionalRejectingErrorHandler;
+
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+
+import java.util.List;
 
 /**
  * ╔══════════════════════════════════════════════════════════════════════════════╗
- *║                           RABBITMQ SETUP FOR ACTIVITY SERVICE                 ║
+ *║                           RABBITMQ SETUP FOR AI SERVICE                 ║
  *║                                                                              ║
- *║  WHAT THIS DOES: Creates the "pipes" for activity tracking messages           ║
+ *║  WHAT THIS DOES: Creates the "pipes" for ai tracking messages           ║
  *║                                                                              ║
  *║  MESSAGE FLOW:  Other Services ──(JSON)──> Exchange ──(routingKey)──> Queue  ║
  *║                                 │                                    │       ║
@@ -80,6 +88,7 @@ public class RabbitMqConfig {
     @Bean
     public JacksonJsonMessageConverter jsonMessageConverter() {
         // 1. Create the new converter
+
         JacksonJsonMessageConverter converter = new JacksonJsonMessageConverter();
 
         // 2. Create a TypeMapper
@@ -92,7 +101,53 @@ public class RabbitMqConfig {
 
         // 4. Attach the mapper to the converter
         converter.setJavaTypeMapper(typeMapper);
-
         return converter;
+    }
+
+
+
+    // 🏭 STEP 6: The Listener Factory (The Engine)
+    // We inject 'JacksonJsonMessageConverter' here so we can attach it manually
+    @Bean
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+            ConnectionFactory connectionFactory,
+            JacksonJsonMessageConverter jsonConverter // <--- 1. INJECT YOUR CONVERTER
+    ) {
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+
+        // 2. ATTACH IT! This connects the "INFERRED" logic to the listener
+        factory.setMessageConverter(jsonConverter);
+
+        // This handles the errors and stops the infinite loop
+        factory.setErrorHandler(new ConditionalRejectingErrorHandler(new GeminiFatalExceptionStrategy()));
+
+        return factory;
+    }
+
+    // Inner class to define what exceptions are "Fatal" (Do not retry)
+    public static class GeminiFatalExceptionStrategy extends ConditionalRejectingErrorHandler.DefaultExceptionStrategy {
+        @Override
+        public boolean isFatal(Throwable t) {
+            // 1. Check standard fatal errors (JSON conversion, etc.)
+            if (super.isFatal(t)) {
+                return true;
+            }
+
+            // 2. Dig deeper to find the WebClient error
+            Throwable cause = t;
+            while (cause != null) {
+                if (cause instanceof WebClientResponseException) {
+                    WebClientResponseException ex = (WebClientResponseException) cause;
+                    // If it's a 4xx error (400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found)
+                    // We STOP retrying. These errors won't fix themselves.
+                    if (ex.getStatusCode().is4xxClientError()) {
+                        return true;
+                    }
+                }
+                cause = cause.getCause();
+            }
+            return false;
+        }
     }
 }
