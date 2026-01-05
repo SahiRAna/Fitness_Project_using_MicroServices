@@ -34,7 +34,7 @@ import java.util.List;
 @Configuration
 public class RabbitMqConfig {
 
-    // 📍 STEP 1: Read names from application.properties (externalized config)
+    // 📍 STEP 1: Read names from application.yaml (externalized config)
     @Value("${spring.rabbitmq.template.default-receive-queue}")  // e.g., "activity.queue"
     private String queueName;                                    // Where messages LAND
 

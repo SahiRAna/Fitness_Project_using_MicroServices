@@ -1,0 +1,34 @@
+# ---------------------------------------------------------------------------------
+# SERVICE REGISTRY AND DISCOVERY
+# ---------------------------------------------------------------------------------
+server:
+  port: 8081 # The port on which the ActivityService will run.
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/ # The URL of the Eureka server for service registration and discovery.
+
+# ---------------------------------------------------------------------------------
+# DATABASE CONFIGURATION
+# ---------------------------------------------------------------------------------
+spring:
+  application:
+    name: ActivityService # The name of the service as it will be registered with Eureka.
+
+  mongodb:
+    uri: mongodb://localhost:27017/Fitness_Activity # The URI for connecting to the MongoDB database.
+    database: Fitness_Activity # The name of the MongoDB database to be used.
+
+# ---------------------------------------------------------------------------------
+# RABBITMQ CONFIGURATION
+# ---------------------------------------------------------------------------------
+
+  rabbitmq:
+    host: localhost # The host where RabbitMQ is running.
+    port: 5672 # The port on which RabbitMQ is listening.
+    username: guest # The username for connecting to RabbitMQ.
+    password: guest # The password for connecting to RabbitMQ.
+    template:
+      exchange: fitness.exchange # The default exchange name to be used by RabbitTemplate's convertAndSend method.
+      default-receive-queue: activity.queue # The default queue name for receive operations.
+      routing-key: activity.tracking # The default routing key for sending messages. When convertAndSend(payload) is called without a specific routing key, this value will be used.
