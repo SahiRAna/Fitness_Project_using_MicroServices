@@ -1,25 +1,18 @@
-# ---------------------------------------------------------------------------------
-# SERVICE REGISTRY AND DISCOVERY
-# ---------------------------------------------------------------------------------
-spring:
-  application:
-    name: AiService
 server:
   port: 8082
 
-# The URL of the Eureka server for service registration and discovery.
-eureka:
-  client:
-    serviceUrl:
-      defaultZone: http://localhost:8761/eureka/
+spring:
+  application:
+    name: AiService
 
-# ---------------------------------------------------------------------------------
-# DATABASE CONFIGURATION
-# ---------------------------------------------------------------------------------
-# The URI for connecting to the MongoDB database.
-  mongodb:
-    uri: mongodb://localhost:27017/AiRecommendations
-    database: AiRecommendations
+  # ---------------------------------------------------------------------------------
+  # DATABASE & MESSAGING CONFIGURATION (Must be under 'spring')
+  # ---------------------------------------------------------------------------------
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/AiRecommendations
+      database: AiRecommendations
+
   rabbitmq:
     host: localhost
     port: 5672
@@ -30,7 +23,15 @@ eureka:
       default-receive-queue: activity.queue
       routing-key: activity.tracking
 
+# ---------------------------------------------------------------------------------
+# SERVICE REGISTRY AND DISCOVERY
+# ---------------------------------------------------------------------------------
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+
 gemini:
   api:
     url: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent
-    key: AIzaSyD1oKrKLTcKOkVVIrcPtGotEC3XEzKJSUU
+    key: ${GEMINI_API_KEY}
