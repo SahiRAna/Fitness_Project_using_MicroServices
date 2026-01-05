@@ -42,7 +42,7 @@ public class GeminiService {
 // ... inside the class ...
 
     public String getAnswer(String prompt) {
-        // 1. Construct the request body
+        // 1. Construct Request Body
         Map<String, Object> requestBody = Map.of(
                 "contents", new Object[]{
                         Map.of("parts", new Object[]{
@@ -51,24 +51,48 @@ public class GeminiService {
                 }
         );
 
-        // 2. Build the URL String manually
+        // 2. Sanitize and Build URL
         String cleanBaseUrl = geminiApiUrl.trim();
+        // Remove trailing '?' if present
         if (cleanBaseUrl.endsWith("?")) {
             cleanBaseUrl = cleanBaseUrl.substring(0, cleanBaseUrl.length() - 1);
         }
 
-        // 2. CONSTRUCT: Add the key with a SINGLE '?'
-        String finalUrlString = cleanBaseUrl + "?key=" + geminiApiKey;
+        // Remove trailing '/' if present (Google hates double slashes)
+        if (cleanBaseUrl.endsWith("/")) {
+            cleanBaseUrl = cleanBaseUrl.substring(0, cleanBaseUrl.length() - 1);
+        }
 
-        // 3. URI OBJECT: Use URI.create to prevent double-encoding
+        // Manually construct the final string
+        String finalUrlString = cleanBaseUrl + "?key=" + geminiApiKey.trim();
+
+        // 3. Create URI
         java.net.URI finalUri = java.net.URI.create(finalUrlString);
+
+        // 🚨 DEBUG LOG: This will show us EXACTLY what is being sent
+        log.info(">>>>>> SENDING REQUEST TO: {}", finalUri);
 
         return webClient.post()
                 .uri(finalUri)
                 .header("Content-Type", "application/json")
                 .bodyValue(requestBody)
-                // ... (rest of your error handling) ...
                 .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, clientResponse ->
+                        clientResponse.bodyToMono(String.class).flatMap(errorBody -> {
+                            log.error("============== GEMINI API ERROR ==============");
+                            log.error("Status: {}", clientResponse.statusCode());
+                            log.error("URL: {}", finalUri); // Log URL on error
+                            log.error("Reason: {}", errorBody);
+                            log.error("==============================================");
+                            return Mono.error(new WebClientResponseException(
+                                    clientResponse.statusCode().value(),
+                                    "Gemini Error",
+                                    clientResponse.headers().asHttpHeaders(),
+                                    errorBody.getBytes(),
+                                    null
+                            ));
+                        })
+                )
                 .bodyToMono(String.class)
                 .block();
     }

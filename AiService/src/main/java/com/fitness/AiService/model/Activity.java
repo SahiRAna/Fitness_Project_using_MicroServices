@@ -31,7 +31,7 @@ public class Activity {
     /**
      * The type of the activity (e.g., RUNNING, CYCLING).
      */
-    private ActivityType activityType;
+    private String activityType;
 
     /**
      * The duration of the activity in minutes.
